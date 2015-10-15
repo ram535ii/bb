@@ -41,6 +41,9 @@ splitMapping = (mapping) ->
 # Validate Inputs
 if rawMappings?
   mappings = splitAndSanitiseEnvVars(rawMappings)
+
+  for pair in mappings
+    console.log("Sending notification for GH User: " + pair[0] + " to room: " + pair[1])
 else
   console.warn "Github Username:Room pairs must be specified for posting, set HUBOT_GITHUB_USERNAME_ROOM_MAPPINGS"
 
