@@ -2,13 +2,11 @@
 #   Notifies Github user when they have been assigned to a Pull Request in their chat client of choice
 #
 # Configuration:
-#   HUBOT_GITHUB_EVENT_NOTIFIER_ROOMS  - The rooms to which message should go,
-#                                        comma-separated (i.e. your Slack username)
-#   HUBOT_GITHUB_USERNAMES - The github user to check for pull request assignment
-#   (NOTE: rooms and usernames should match in order
-#   i.e. HUBOT_GITHUB_EVENT_NOTIFIER_ROOMS = room1, room2
-#        HUBOT_GITHUB_USERNAMES            = user1, user2
-#   )
+#   HUBOT_GITHUB_USERNAME_ROOM_MAPPINGS - A mapping of which github username
+#                                         and chat room belong together.
+#   (example:
+#   HUBOT_GITHUB_USERNAME_ROOM_MAPPINGS = user1:room1, user2:room2...
+#   So when user1 is assigned a PR the bot posts to room1)
 #
 #   You will have to do the following:
 #   1. Create a new webhook for your `myuser/myrepo` repository at:
@@ -26,26 +24,25 @@
 #
 # Authors:
 #   ram535ii
+#   Advice from seddy
 #   Thanks to https://github.com/hubot-scripts/hubot-github-repo-event-notifier for inspiration
 
-rawRooms = process.env["HUBOT_GITHUB_EVENT_NOTIFIER_ROOMS"]
-rawUsers = process.env["HUBOT_GITHUB_USERNAMES"]
+rawMappings = process.env["HUBOT_GITHUB_USERNAME_ROOM_MAPPINGS"]
 
 splitAndSanitiseEnvVars = (commaSeparatedList) ->
-  commaSeparatedList.split(",").map((item) ->
-    item.trim()
+  commaSeparatedList.split(",").map((mapping) ->
+    splitMapping(mapping.trim())
   )
 
-# Validate Inputs
-if rawRooms?
-  rooms = splitAndSanitiseEnvVars(rawRooms)
-else
-  console.warn "Rooms must be specified for posting to, set HUBOT_GITHUB_EVENT_NOTIFIER_ROOM."
+splitMapping = (mapping) ->
+  pair = mapping.split(":")
+  [pair[0].trim(), pair[1].trim()]
 
-if rawUsers?
-  users = splitAndSanitiseEnvVars(rawUsers)
+# Validate Inputs
+if rawMappings?
+  mappings = splitAndSanitiseEnvVars(rawMappings)
 else
-  console.warn "Users to check for pull request assignment must be specified, set HUBOT_GITHUB_USERNAME to your github username."
+  console.warn "Github Username:Room pairs must be specified for posting, set HUBOT_GITHUB_USERNAME_ROOM_MAPPINGS"
 
 module.exports = (robot) ->
   robot.router.post "/hubot/gh-repo-events", (req, res) ->
@@ -53,8 +50,8 @@ module.exports = (robot) ->
     pr_url = data.pull_request.html_url
 
     if data.action == "assigned"
-      for user, i in users
-        if data.assignee.login == user
-          robot.messageRoom rooms[i], "Sire, you have been assigned to a new pull request - do yourself a favor and check it here => " + pr_url
+      for pair in mappings
+        if data.assignee.login == pair[0]
+          robot.messageRoom pair[1], "Sire, you have been assigned to a new pull request - do yourself a favor and check it here => " + pr_url
 
     res.end "{'status' : 200}"
